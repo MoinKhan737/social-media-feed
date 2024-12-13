@@ -20,56 +20,72 @@ const CreatePost = () => {
     e.preventDefault();
     let mediaUrls = [];
 
+    // Upload media files
     for (const file of mediaFiles) {
-      const fileType = file.type.startsWith("image/") ? "images" : "videos";
-      const filePath = `${fileType}/${Date.now()}_${file.name}`;
+        const fileType = file.type.startsWith("image/") ? "images" : "videos";
+        const filePath = `${fileType}/${Date.now()}_${file.name}`;
 
-      const { data, error } = await supabase.storage
-        .from("post-images")
-        .upload(filePath, file);
+        const { data, error } = await supabase.storage
+            .from("post-images")
+            .upload(filePath, file);
 
-      if (error) {
-        alert("Error uploading file: " + error.message);
-        return;
-      }
+        if (error) {
+            alert("Error uploading file: " + error.message);
+            return;
+        }
 
-      const { data: publicUrlData, error: publicUrlError } = supabase.storage
-        .from("post-images")
-        .getPublicUrl(filePath);
+        const { data: publicUrlData, error: publicUrlError } = supabase.storage
+            .from("post-images")
+            .getPublicUrl(filePath);
 
-      if (publicUrlError) {
-        alert("Error generating public URL: " + publicUrlError.message);
-        return;
-      }
+        if (publicUrlError) {
+            alert("Error generating public URL: " + publicUrlError.message);
+            return;
+        }
 
-      mediaUrls.push(publicUrlData.publicUrl);
+        mediaUrls.push(publicUrlData.publicUrl);
     }
 
+    // Fetch authenticated user details
     const { data: userData, error: authError } = await supabase.auth.getUser();
     if (authError || !userData?.user) {
-      alert("You must be logged in to post.");
-      return;
+        alert("You must be logged in to post.");
+        return;
     }
 
-    const { error } = await supabase.from("posts").insert([
-      {
-        content,
-        media_urls: mediaUrls,
-        user_id: userData.user.id,
-        user_name: userData.user.email,
-      },
+    // Fetch user_name from users table
+    const { data: userDetails, error: userDetailsError } = await supabase
+        .from("users")
+        .select("user_name")
+        .eq("id", userData.user.id)
+        .single();
+
+    if (userDetailsError || !userDetails) {
+        alert("Error fetching user details: " + userDetailsError?.message || "User not found.");
+        return;
+    }
+
+    // Create the post
+    const { error: postError } = await supabase.from("posts").insert([
+        {
+            content,
+            media_urls: mediaUrls,
+            user_id: userData.user.id,
+            user_name: userDetails.user_name, // Use the user_name from the users table
+        },
     ]);
 
-    if (error) {
-      alert("Error posting: " + error.message);
+    if (postError) {
+        alert("Error posting: " + postError.message);
     } else {
-      setContent("");
-      setMediaFiles([]);
-      setMediaPreviews([]);
-      alert("Post created successfully!");
-      navigate("/");
+        setContent("");
+        setMediaFiles([]);
+        setMediaPreviews([]);
+        alert("Post created successfully!");
+        navigate("/");
     }
-  };
+};
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-purple-500 to-blue-500">

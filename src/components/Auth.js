@@ -9,6 +9,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupFields, setShowSignupFields] = useState(false);
+  
 
   const signUp = async () => {
     // 
